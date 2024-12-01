@@ -1,33 +1,23 @@
 import React, { useState } from "react";
+import { useParams, Link } from "react-router-dom";
 import "./ShoppingListDetail.css";
 
-function ShoppingListDetail() {
-  const [shoppingList, setShoppingList] = useState({
-    name: "Nákupný zoznam 1",
-    owner: "user123",
-    members: ["user456", "user789"],
-    items: [
-      { name: "Melón", checked: false },
-      { name: "Avokádo", checked: true },
-      { name: "Jahody", checked: false },
-    ],
-    filter: "all",
-  });
-
-  const [currentUser, setCurrentUser] = useState("user789"); 
+function ShoppingListDetail({ shoppingLists }) {
+  const { id } = useParams();
+  const shoppingList = shoppingLists.find((list) => list.id === parseInt(id));
+  const [currentUser, setCurrentUser] = useState("user123");
 
   const [editingName, setEditingName] = useState(false);
   const [newName, setNewName] = useState(shoppingList.name);
   const [editingItemName, setEditingItemName] = useState(null);
   const [newItemName, setNewItemName] = useState("");
+  const [newMember, setNewMember] = useState("");
+  const [newItem, setNewItem] = useState("");
+  const [filter, setFilter] = useState("all");
 
   const handleCheckItem = (index) => {
-    setShoppingList((prevList) => ({
-      ...prevList,
-      items: prevList.items.map((item, i) =>
-        i === index ? { ...item, checked: !item.checked } : item,
-      ),
-    }));
+    shoppingList.items[index].checked = !shoppingList.items[index].checked;
+    setShoppingList({ ...shoppingList });
   };
 
   const handleEditName = () => {
@@ -36,7 +26,8 @@ function ShoppingListDetail() {
   };
 
   const handleSaveName = () => {
-    setShoppingList((prevList) => ({ ...prevList, name: newName }));
+    shoppingList.name = newName;
+    setShoppingList({ ...shoppingList });
     setEditingName(false);
   };
 
@@ -44,57 +35,48 @@ function ShoppingListDetail() {
     setEditingName(false);
   };
 
-  const handleAddMember = (newMember) => {
-    setShoppingList((prevList) => ({
-      ...prevList,
-      members: [...prevList.members, newMember],
-    }));
+  const handleAddMember = () => {
+    if (newMember) {
+      shoppingList.members.push(newMember);
+      setShoppingList({ ...shoppingList });
+      setNewMember("");
+    }
   };
 
-  const handleRemoveMember = (memberToRemove) => {
-    setShoppingList((prevList) => ({
-      ...prevList,
-      members: prevList.members.filter((member) => member !== memberToRemove),
-    }));
+  const handleRemoveMember = (index) => {
+    shoppingList.members.splice(index, 1);
+    setShoppingList({ ...shoppingList });
   };
 
   const handleLeaveShoppingList = () => {
-    setShoppingList((prevList) => ({
-      ...prevList,
-      members: prevList.members.filter((member) => member !== currentUser),
-    }));
+    const index = shoppingList.members.indexOf(currentUser);
+    if (index > -1) {
+      shoppingList.members.splice(index, 1);
+      setShoppingList({ ...shoppingList });
+    }
   };
 
-  const handleAddItem = (newItem) => {
-    setShoppingList((prevList) => ({
-      ...prevList,
-      items: [...prevList.items, { name: newItem, checked: false }],
-    }));
+  const handleAddItem = () => {
+    if (newItem) {
+      shoppingList.items.push({ name: newItem, checked: false });
+      setShoppingList({ ...shoppingList });
+      setNewItem("");
+    }
   };
 
   const handleRemoveItem = (index) => {
-    setShoppingList((prevList) => ({
-      ...prevList,
-      items: prevList.items.filter((_, i) => i !== index),
-    }));
+    shoppingList.items.splice(index, 1);
+    setShoppingList({ ...shoppingList });
   };
 
-  const handleFilterChange = (newFilter) => {
-    setShoppingList((prevList) => ({ ...prevList, filter: newFilter }));
-  };
-
-  const handleEditItemName = (index, itemName) => {
+  const handleEditItemName = (index) => {
     setEditingItemName(index);
-    setNewItemName(itemName);
+    setNewItemName(shoppingList.items[index].name);
   };
 
   const handleSaveItemName = (index) => {
-    setShoppingList((prevList) => ({
-      ...prevList,
-      items: prevList.items.map((item, i) =>
-        i === index ? { ...item, name: newItemName } : item,
-      ),
-    }));
+    shoppingList.items[index].name = newItemName;
+    setShoppingList({ ...shoppingList });
     setEditingItemName(null);
   };
 
@@ -102,13 +84,20 @@ function ShoppingListDetail() {
     setEditingItemName(null);
   };
 
+  const handleFilterChange = (event) => {
+    setFilter(event.target.value);
+  };
+
+  const isOwner = currentUser === shoppingList.owner;
   const filteredItems = shoppingList.items.filter((item) => {
-    if (shoppingList.filter === "unresolved") return !item.checked;
-    if (shoppingList.filter === "resolved") return item.checked;
+    if (filter === "unresolved") return !item.checked;
+    if (filter === "resolved") return item.checked;
     return true;
   });
 
-  const isOwner = currentUser === shoppingList.owner;
+  if (!shoppingList) {
+    return <div>Zoznam nebol nájdený.</div>;
+  }
 
   return (
     <div className="shopping-list-container">
@@ -145,7 +134,7 @@ function ShoppingListDetail() {
                 <div className="member-actions">
                   <button
                     className="remove-member-button"
-                    onClick={() => handleRemoveMember(member)}
+                    onClick={() => handleRemoveMember(index)}
                   >
                     Odstrániť
                   </button>
@@ -154,6 +143,17 @@ function ShoppingListDetail() {
             </li>
           ))}
         </ul>
+        {isOwner && (
+          <div className="add-member-field">
+            <input
+              type="text"
+              value={newMember}
+              onChange={(e) => setNewMember(e.target.value)}
+              placeholder="Pridať člena"
+            />
+            <button onClick={handleAddMember}>Pridať</button>
+          </div>
+        )}
         {!isOwner && (
           <button className="leave-button" onClick={handleLeaveShoppingList}>
             Opustiť zoznam
@@ -165,10 +165,7 @@ function ShoppingListDetail() {
         <h2>Položky:</h2>
         <div className="filter">
           Filter:
-          <select
-            value={shoppingList.filter}
-            onChange={(e) => handleFilterChange(e.target.value)}
-          >
+          <select value={filter} onChange={handleFilterChange}>
             <option value="all">Všetky</option>
             <option value="unresolved">Nevyriešené</option>
             <option value="resolved">Vyriešené</option>
@@ -208,7 +205,7 @@ function ShoppingListDetail() {
               <div className="item-actions">
                 <button
                   className="edit-item-button"
-                  onClick={() => handleEditItemName(index, item.name)}
+                  onClick={() => handleEditItemName(index)}
                 >
                   Premenovať
                 </button>
@@ -224,12 +221,21 @@ function ShoppingListDetail() {
             </li>
           ))}
         </ul>
-        <button
-          className="add-item-button"
-          onClick={() => handleAddItem("Nová položka")}
-        >
-          Pridať položku do nákupného zoznamu
-        </button>
+        <div className="add-item-field">
+          <input
+            type="text"
+            value={newItem}
+            onChange={(e) => setNewItem(e.target.value)}
+            placeholder="Pridať položku"
+          />
+          <button onClick={handleAddItem}>Pridať</button>
+        </div>
+
+        <Link to="/">
+          <button className="back-to-overview-button">
+            Prehľad zoznamov
+          </button>
+        </Link>
       </div>
     </div>
   );
